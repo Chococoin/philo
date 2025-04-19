@@ -1,26 +1,27 @@
 #include <stdio.h>
 #include <sys/time.h>
 
+long get_elapsed_time(struct timeval start)
+{
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
+    long elapsed = (now.tv_sec - start.tv_sec) * 1000L;
+    elapsed += (now.tv_usec - start.tv_usec) / 1000L;
+
+    return elapsed;
+}
+
 int main(void)
 {
     struct timeval start;
-    struct timeval end;
-    long elapsed_time;
 
-    // Obtener tiempo de inicio
     gettimeofday(&start, NULL);
 
-    // Simular una acción (aquí puedes poner cualquier lógica futura de filósofo)
-    for (volatile long i = 0; i < 100000000; i++); // Espera artificial
+    for (volatile long i = 0; i < 100000000; i++); // Simulación de trabajo
 
-    // Obtener tiempo de final
-    gettimeofday(&end, NULL);
+    long elapsed_time = get_elapsed_time(start);
 
-    // Calcular tiempo transcurrido en milisegundos
-    elapsed_time = (end.tv_sec - start.tv_sec) * 1000L;
-    elapsed_time += (end.tv_usec - start.tv_usec) / 1000L;
-
-    // Imprimir el tiempo transcurrido
     printf("Tiempo transcurrido: %ld ms\n", elapsed_time);
 
     return 0;
