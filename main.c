@@ -32,6 +32,10 @@ void *philosopher_routine(void *arg)
     struct s_philosopher *philo = (struct s_philosopher *)arg;
     t_data *data = philo->data;
 
+    struct timeval init_time;
+    gettimeofday(&init_time, NULL);
+    philo->last_meal_time = init_time.tv_sec * 1000L + init_time.tv_usec / 1000L;
+
     while (!data->someone_died)
     {
         while ((philo->id + data->alternance_cycle) % 2 != 0)
@@ -84,6 +88,7 @@ void *clock_thread(void *arg)
     t_data *data = (t_data *)arg;
     struct timeval now;
     long time_since_last_meal;
+    static long last_switch_time = 0;
 
     while (!data->someone_died)
     {
@@ -102,11 +107,18 @@ void *clock_thread(void *arg)
             {
                 printf("Philosopher %d died after %ld ms without eating\n", philo->id, time_since_last_meal);
                 data->someone_died = 1;
+                printf("Simulation stopped due to philosopher death.\n");
                 return NULL;
             }
         }
 
-        data->alternance_cycle++;
+        long current_time = now.tv_sec * 1000L + now.tv_usec / 1000L;
+
+        if (last_switch_time == 0 || current_time - last_switch_time >= data->time_to_eat)
+        {
+            data->alternance_cycle++;
+            last_switch_time = current_time;
+        }
         usleep(1000);
     }
 
