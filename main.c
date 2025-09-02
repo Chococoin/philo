@@ -35,7 +35,6 @@ void *philosopher_routine(void *arg)
     struct timeval init_time;
     gettimeofday(&init_time, NULL);
     philo->last_meal_time = init_time.tv_sec * 1000L + init_time.tv_usec / 1000L;
-
     while (!data->someone_died)
     {
         while ((philo->id + data->alternance_cycle) % 2 != 0)
@@ -44,7 +43,16 @@ void *philosopher_routine(void *arg)
                 return NULL;
             usleep(100); // espera breve hasta que llegue su turno
         }
-
+        // Simulación de fallo para el filósofo 5 en el ciclo 20
+        if (philo->id == 5 && data->alternance_cycle == 20)
+        {
+            printf("Philosopher 5 is stuck and cannot eat ❌\n");
+            while (!data->someone_died)
+                usleep(1000); // espera hasta que se detecte la muerte
+            return NULL;
+        }
+        if (data->someone_died)
+            return NULL;
         // Tomar tenedores
         if (philo->id % 2 == 0)
         {
@@ -60,26 +68,31 @@ void *philosopher_routine(void *arg)
             pthread_mutex_lock(philo->right_fork);
             printf("Philosopher %d has taken the right fork\n", philo->id);
         }
-
+        if (data->someone_died)
+        {
+            pthread_mutex_unlock(philo->right_fork);
+            pthread_mutex_unlock(philo->left_fork);
+            return NULL;
+        }
         // Comer
         struct timeval now;
         gettimeofday(&now, NULL);
         philo->last_meal_time = now.tv_sec * 1000L + now.tv_usec / 1000L;
         printf("Philosopher %d is eating 🍝\n", philo->id);
         usleep(data->time_to_eat * 1000);
-
         // Soltar tenedores
         pthread_mutex_unlock(philo->right_fork);
         pthread_mutex_unlock(philo->left_fork);
-
+        if (data->someone_died)
+            return NULL;
         // Dormir
         printf("Philosopher %d is sleeping 😴\n", philo->id);
         usleep(data->time_to_sleep * 1000);
-
+        if (data->someone_died)
+            return NULL;
         // Pensar
         printf("Philosopher %d is thinking 🤔\n", philo->id);
     }
-
     return NULL;
 }
 
@@ -93,16 +106,12 @@ void *clock_thread(void *arg)
     while (!data->someone_died)
     {
         gettimeofday(&now, NULL);
-
         for (int i = 0; i < data->number_of_philosophers; i++)
         {
             struct s_philosopher *philo = &data->philosophers[i];
-
             if (philo->last_meal_time == 0)
                 continue;
-
             time_since_last_meal = (now.tv_sec * 1000L + now.tv_usec / 1000L) - philo->last_meal_time;
-
             if (time_since_last_meal > data->time_to_die)
             {
                 printf("Philosopher %d died after %ld ms without eating\n", philo->id, time_since_last_meal);
@@ -111,9 +120,7 @@ void *clock_thread(void *arg)
                 return NULL;
             }
         }
-
         long current_time = now.tv_sec * 1000L + now.tv_usec / 1000L;
-
         if (last_switch_time == 0 || current_time - last_switch_time >= data->time_to_eat)
         {
             data->alternance_cycle++;
@@ -121,7 +128,6 @@ void *clock_thread(void *arg)
         }
         usleep(1000);
     }
-
     return NULL;
 }
 
@@ -129,10 +135,8 @@ long get_elapsed_time(struct timeval start)
 {
     struct timeval now;
     gettimeofday(&now, NULL);
-
     long elapsed = (now.tv_sec - start.tv_sec) * 1000L;
     elapsed += (now.tv_usec - start.tv_usec) / 1000L;
-
     return elapsed;
 }
 
@@ -141,7 +145,6 @@ int main(void)
     struct timeval start;
 
     gettimeofday(&start, NULL);
-
     t_data data;
     data.number_of_philosophers = 5; // por ahora, valor fijo
     data.time_to_die = 800;
@@ -149,12 +152,10 @@ int main(void)
     data.time_to_sleep = 100;
     data.someone_died = 0;
     data.alternance_cycle = 0;
-
     // Crear tenedores
     data.forks = malloc(sizeof(pthread_mutex_t) * data.number_of_philosophers);
     for (int i = 0; i < data.number_of_philosophers; i++)
         pthread_mutex_init(&data.forks[i], NULL);
-
     // Crear filósofos
     data.philosophers = malloc(sizeof(struct s_philosopher) * data.number_of_philosophers);
     for (int i = 0; i < data.number_of_philosophers; i++)
@@ -166,28 +167,20 @@ int main(void)
         data.philosophers[i].meals_eaten = 0;
         data.philosophers[i].last_meal_time = 0;
     }
-
     pthread_t clock;
     pthread_create(&clock, NULL, clock_thread, &data);
     pthread_detach(clock);
-
     for (int i = 0; i < data.number_of_philosophers; i++)
         pthread_create(&data.philosophers[i].thread, NULL, philosopher_routine, &data.philosophers[i]);
-
     for (int i = 0; i < data.number_of_philosophers; i++)
         pthread_join(data.philosophers[i].thread, NULL);
-
     long elapsed_time = get_elapsed_time(start);
-
     printf("Tiempo transcurrido: %ld ms\n", elapsed_time);
-
     // Destruir mutexes de los tenedores
     for (int i = 0; i < data.number_of_philosophers; i++)
         pthread_mutex_destroy(&data.forks[i]);
-
     // Liberar memoria
     free(data.forks);
     free(data.philosophers);
-
     return 0;
 }
