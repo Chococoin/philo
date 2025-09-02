@@ -9,10 +9,10 @@
 ## 🔹 1. Threads (`pthread_create`, `pthread_join`)
 
 ### Qué debes saber:
-[X] Qué es un hilo vs. proceso
-- Cómo se crea un hilo en C
-- Qué pasa cuando varios hilos acceden a la misma memoria
-- Cuándo usar `join` y cuándo `detach`
+[x] Qué es un hilo vs. proceso
+[x] Cómo se crea un hilo en C
+[x] Qué pasa cuando varios hilos acceden a la misma memoria
+[x] Cuándo usar `join` y cuándo `detach`
 
 ### En tu código:
 ```c
